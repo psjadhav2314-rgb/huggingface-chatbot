@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hugging Face Chatbot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 700px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+            max-height: 800px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px 12px 0 0;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        .chat-box {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f9f9f9;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message.user {
+            justify-content: flex-end;
+        }
+        
+        .message.bot {
+            justify-content: flex-start;
+        }
+        
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            word-wrap: break-word;
+        }
+        
+        .message.user .message-content {
+            background: #667eea;
+            color: white;
+            border-radius: 12px 12px 0 12px;
+        }
+        
+        .message.bot .message-content {
+            background: #e3e3e3;
+            color: #333;
+            border-radius: 12px 12px 12px 0;
+        }
+        
+        .message-info {
+            font-size: 11px;
+            margin-top: 5px;
+            opacity: 0.7;
+            padding: 0 10px;
+        }
+        
+        .info-badge {
+            display: inline-block;
+            background: #f0f0f0;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-right: 8px;
+            font-weight: 500;
+        }
+        
+        .sentiment-positive {
+            color: #27ae60;
+        }
+        
+        .sentiment-negative {
+            color: #e74c3c;
+        }
+        
+        .sentiment-neutral {
+            color: #f39c12;
+        }
+        
+        .input-area {
+            padding: 20px;
+            border-top: 1px solid #eee;
+            background: white;
+            border-radius: 0 0 12px 12px;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        #messageInput {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e3e3e3;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+        
+        #messageInput:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+        }
+        
+        button:active {
+            transform: scale(0.98);
+        }
+        
+        .clear-btn {
+            background: #e74c3c;
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+        
+        .clear-btn:hover {
+            background: #c0392b;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 10px;
+            color: #667eea;
+            font-size: 12px;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .loading::after {
+            content: '';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% {
+                content: '';
+            }
+            40% {
+                content: '.';
+            }
+            60% {
+                content: '..';
+            }
+            80%, 100% {
+                content: '...';
+            }
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .button-group button {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Chatbot</h1>
+            <p>Powered by Hugging Face Transformers</p>
+        </div>
+        
+        <div class="chat-box" id="chatBox"></div>
+        
+        <div class="loading" id="loading"></div>
+        
+        <div class="input-area">
+            <div class="input-group">
+                <input 
+                    type="text" 
+                    id="messageInput" 
+                    placeholder="Type your message..." 
+                    autocomplete="off"
+                >
+                <button onclick="sendMessage()">Send</button>
+            </div>
+            <div class="button-group">
+                <button class="clear-btn" onclick="clearHistory()">Clear Chat</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const chatBox = document.getElementById('chatBox');
+        const messageInput = document.getElementById('messageInput');
+        const loadingDiv = document.getElementById('loading');
+        
+        // Allow Enter key to send message
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        function addMessage(text, isUser = false, sentiment = null, intent = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = text;
+            
+            messageDiv.appendChild(contentDiv);
+            
+            // Add sentiment and intent info for bot messages
+            if (!isUser && (sentiment || intent)) {
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'message-info';
+                
+                if (sentiment) {
+                    const sentimentClass = `sentiment-${sentiment.toLowerCase()}`;
+                    infoDiv.innerHTML += `<span class="info-badge ${sentimentClass}">Sentiment: ${sentiment}</span>`;
+                }
+                
+                if (intent) {
+                    infoDiv.innerHTML += `<span class="info-badge">Intent: ${intent}</span>`;
+                }
+                
+                messageDiv.appendChild(infoDiv);
+            }
+            
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+        
+        function showLoading(show = true) {
+            if (show) {
+                loadingDiv.classList.add('active');
+            } else {
+                loadingDiv.classList.remove('active');
+            }
+        }
+        
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message to chat
+            addMessage(message, true);
+            messageInput.value = '';
+            
+            // Show loading indicator
+            showLoading(true);
+            
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    addMessage(
+                        data.bot_response,
+                        false,
+                        data.sentiment,
+                        data.intent
+                    );
+                } else {
+                    addMessage("Sorry, I encountered an error. Please try again.", false);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage("Sorry, I'm having trouble connecting. Please try again.", false);
+            } finally {
+                showLoading(false);
+                messageInput.focus();
+            }
+        }
+        
+        async function clearHistory() {
+            if (confirm('Are you sure you want to clear the chat history?')) {
+                try {
+                    await fetch('/api/clear', { method: 'POST' });
+                    chatBox.innerHTML = '';
+                    addMessage("Chat history cleared! Start a new conversation.", false);
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            }
+        }
+        
+        // Initial greeting
+        window.addEventListener('load', () => {
+            addMessage("Hello! I'm your AI assistant powered by Hugging Face. How can I help you today?", false);
+            messageInput.focus();
+        });
+    </script>
+</body>
+</html>
