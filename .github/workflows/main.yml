@@ -5,7 +5,7 @@ cd huggingface-chatbot
 mkdir -p .github/workflows
 
 # Create the workflow file
-cat > .github/workflows/test.yml << 'EOF'
+cat > .github/workflows/main.yml << 'EOF'
 name: Test and Build
 
 on:
