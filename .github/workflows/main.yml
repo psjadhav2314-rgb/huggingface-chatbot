@@ -1,11 +1,4 @@
-# Clone or navigate to your repository
-cd huggingface-chatbot
-
-# Create the workflow directory
-mkdir -p .github/workflows
-
-# Create the workflow file
-cat > .github/workflows/main.yml << 'EOF'
+#
 name: Test and Build
 
 on:
@@ -121,9 +114,3 @@ jobs:
         name: chatbot-build
         path: build/
         retention-days: 30
-EOF
-
-# Commit and push
-git add .github/workflows/test.yml
-git commit -m "Add GitHub Actions workflow for testing and building"
-git push origin main
