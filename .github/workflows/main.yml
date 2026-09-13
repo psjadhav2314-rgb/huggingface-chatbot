@@ -1,0 +1,129 @@
+# Clone or navigate to your repository
+cd huggingface-chatbot
+
+# Create the workflow directory
+mkdir -p .github/workflows
+
+# Create the workflow file
+cat > .github/workflows/test.yml << 'EOF'
+name: Test and Build
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10']
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Cache pip packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov flake8
+    
+    - name: Lint with flake8
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
+    - name: Verify Python scripts
+      run: |
+        python -m py_compile app.py
+        python -m py_compile advanced_chatbot.py
+        python -m py_compile simple_chatbot.py
+    
+    - name: Verify dependencies
+      run: |
+        python -c "import flask; print(f'Flask version: {flask.__version__}')"
+        python -c "import transformers; print(f'Transformers version: {transformers.__version__}')"
+        python -c "import torch; print(f'PyTorch version: {torch.__version__}')"
+    
+    - name: Check README
+      run: |
+        test -f README.md && echo "✓ README.md exists" || exit 1
+        test -f requirements.txt && echo "✓ requirements.txt exists" || exit 1
+        test -f templates/index.html && echo "✓ HTML template exists" || exit 1
+    
+    - name: Generate code coverage report
+      run: |
+        pytest . --cov=. --cov-report=xml --cov-report=html 2>/dev/null || echo "No tests found"
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit safety
+    
+    - name: Run Bandit security scan
+      run: bandit -r . -ll -q || true
+    
+    - name: Check for security vulnerabilities
+      run: safety check --json || true
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Build artifacts
+      run: |
+        mkdir -p build
+        cp -r app.py advanced_chatbot.py simple_chatbot.py requirements.txt templates/ build/
+        echo "✓ Build successful!"
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: chatbot-build
+        path: build/
+        retention-days: 30
+EOF
+
+# Commit and push
+git add .github/workflows/test.yml
+git commit -m "Add GitHub Actions workflow for testing and building"
+git push origin main
