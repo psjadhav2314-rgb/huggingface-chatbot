@@ -102,4 +102,4 @@ jobs:
         pip install -r requirements.txt
 
     - name: Run simple chatbot
-      run: python simple_chatbot.py
+      run: python app.py
